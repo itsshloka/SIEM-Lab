@@ -1,0 +1,3 @@
+index=main source="/var/log/auth.log" "FAILED su" OR "authentication failure"
+| stats count by host, user
+| where count > 2

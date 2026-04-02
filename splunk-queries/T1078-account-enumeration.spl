@@ -1,0 +1,4 @@
+```
+index=main source="/var/log/auth.log" ("session opened" OR "session closed")
+| stats count by host, user
+| where count > 3
