@@ -15,8 +15,6 @@ The goal was to practise the full Tier 1 SOC workflow: ingest logs, write detect
 | SIEM | Splunk Enterprise v10.2.1 |
 | Log sources | `/var/log/auth.log` (authentication, sudo, su, SSH), `/var/log/syslog` (system events) |
 
-<!-- Add an architecture diagram here, e.g. screenshots/architecture.png -->
-
 ---
 
 ## Detection Rules
@@ -28,6 +26,7 @@ The goal was to practise the full Tier 1 SOC workflow: ingest logs, write detect
 | 3 | Sudo Command Execution | [T1548.003 – Sudo and Sudo Caching](https://attack.mitre.org/techniques/T1548/003/) | Commands run with elevated privileges |
 | 4 | Session Activity Monitoring | [T1078 – Valid Accounts](https://attack.mitre.org/techniques/T1078/) | User sessions opened and closed |
 | 5 | Failed su Attempts | [T1548 – Abuse Elevation Control Mechanism](https://attack.mitre.org/techniques/T1548/) | Failed attempts to switch to another user (often root) |
+| 6 | Successful Login After Brute Force | [T1110.001](https://attack.mitre.org/techniques/T1110/001/) → [T1078](https://attack.mitre.org/techniques/T1078/) | Source IP with 5+ failed SSH logins that then logs in successfully, indicating a likely compromised account |
 
 Full SPL queries are in [`splunk-queries/`](splunk-queries/).
 
@@ -41,19 +40,15 @@ index=main source="/var/log/auth.log" "Failed password"
 | sort - failed_attempts
 ```
 
-<!-- Replace the query above with your exact query if it differs -->
-
-<!-- Add screenshot: screenshots/brute-force-alert.png -->
-
 ---
 
 ## Attack Simulation
 
 Each detection was tested by generating the matching activity on the lab machine:
 
-- **Brute force:** repeated failed SSH logins using [manual attempts / Hydra]
+- **Brute force:** repeated failed SSH logins with incorrect passwords
 - **Privilege escalation:** running commands with `sudo` and failed `su` attempts with wrong passwords
-- **Valid account use:** successful SSH logins after failed attempts
+- **Account compromise:** a successful SSH login after 5+ failed attempts from the same source
 
 Alerts were then triaged in Splunk to confirm they fired correctly and to tune thresholds and reduce noise.
 
@@ -61,19 +56,13 @@ Alerts were then triaged in Splunk to confirm they fired correctly and to tune t
 
 ## Incident Reports
 
-Three incidents were documented using a standard SOC report format (summary, timeline, evidence, MITRE mapping, impact, recommendations). See [`incident-reports/`](incident-reports/).
-
-| Report | Scenario |
-|---|---|
-| Incident 1 | [e.g. SSH brute-force attack from single IP] |
-| Incident 2 | [e.g. Privilege escalation attempt via su] |
-| Incident 3 | [e.g. Suspicious sudo activity] |
+Three incidents were documented using a standard SOC report format (summary, timeline, evidence, MITRE mapping, impact, recommendations). The reports are in [`incident-reports/`](incident-reports/).
 
 ---
 
 ## Key Outcomes
 
-- Built 5 SPL detections covering credential access and privilege escalation techniques
+- Built 6 SPL detections covering credential access and privilege escalation techniques
 - Mapped every detection to MITRE ATT&CK
 - Validated each detection against simulated attack activity
 - Produced 3 standardized incident reports
@@ -85,8 +74,7 @@ Three incidents were documented using a standard SOC report format (summary, tim
 ```
 SIEM-Lab/
 ├── splunk-queries/     # SPL detection rules
-├── incident-reports/   # Documented security incidents
-└── screenshots/        # Alerts, searches and dashboards
+└── incident-reports/   # Documented security incidents
 ```
 
 ---
