@@ -1,0 +1,20 @@
+``` Detection: Successful SSH Login After Brute Force ```
+``` MITRE ATT&CK: T1110.001 Password Guessing -> T1078 Valid Accounts ```
+``` Logic: alert when a source IP has 5+ failed SSH logins AND then logs in successfully ```
+``` Schedule: run every 15 minutes over the last 15 minutes; trigger when results > 0; severity High ```
+
+index=main source="/var/log/auth.log" ("Failed password" OR "Accepted password" OR "Accepted publickey")
+| rex "(?<action>Failed|Accepted) (password|publickey) for (invalid user )?(?<user>\S+) from (?<src_ip>\S+)"
+| eval status=if(action="Failed", "failure", "success")
+| stats count(eval(status="failure")) AS failed_attempts,
+        count(eval(status="success")) AS successful_logins,
+        min(eval(if(status="failure", _time, null()))) AS first_failure,
+        max(eval(if(status="success", _time, null()))) AS last_success,
+        values(eval(if(status="success", user, null()))) AS compromised_accounts,
+        values(user) AS targeted_accounts
+        BY src_ip
+| where failed_attempts >= 5 AND successful_logins >= 1 AND last_success > first_failure
+| eval first_failure=strftime(first_failure, "%Y-%m-%d %H:%M:%S"),
+       last_success=strftime(last_success, "%Y-%m-%d %H:%M:%S")
+| table src_ip, failed_attempts, successful_logins, targeted_accounts, compromised_accounts, first_failure, last_success
+| sort - failed_attempts
